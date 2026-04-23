@@ -3,7 +3,7 @@ workflows:
   windows-build:
     name: TaskFlow Windows Build
     environment:
-      flutter: stable
+      flutter: 3.29.3  # 指定 Flutter 版本
     scripts:
       - name: Setup Flutter for Windows
         script: |
@@ -15,10 +15,3 @@ workflows:
         script: flutter build windows --release
     artifacts:
       - build/windows/runner/Release/**/*
-    publishing:
-      email:
-        notify:
-          success: true
-          failure: true
-        recipients:
-          - your-email@example.com  # Replace with your email if needed
