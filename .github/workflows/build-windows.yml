@@ -40,7 +40,7 @@ jobs:
           Write-Host "Build directory does not exist"
         }
 
-    - name: Find and copy TaskFlow.exe
+    - name: Find and verify TaskFlow.exe
       run: |
         Write-Host "=== Searching for TaskFlow.exe ==="
 
@@ -50,30 +50,34 @@ jobs:
           Write-Host "✅ Found TaskFlow.exe at: $expectedPath"
           $file = Get-Item $expectedPath
           Write-Host "File size: $([math]::Round($file.Length/1MB, 2)) MB"
-        } else {
-          Write-Host "❌ Not found at: $expectedPath"
-
-          # Search recursively
-          Write-Host "Searching recursively..."
-          $foundFiles = Get-ChildItem -Recurse -Filter "TaskFlow.exe" -ErrorAction SilentlyContinue
-          if ($foundFiles) {
-            Write-Host "✅ Found TaskFlow.exe:"
-            foreach ($f in $foundFiles) {
-              Write-Host "  - $($f.FullName) ($([math]::Round($f.Length/1KB, 1)) KB)"
-            }
-            # Copy to expected location
-            $source = $foundFiles[0].FullName
-            $destDir = "build/windows/runner/Release"
-            New-Item -ItemType Directory -Force -Path $destDir | Out-Null
-            Copy-Item $source "$destDir/TaskFlow.exe"
-            Write-Host "✅ Copied to: $destDir/TaskFlow.exe"
-          } else {
-            Write-Host "❌ TaskFlow.exe not found anywhere"
-            # List all .exe files
-            Write-Host "All .exe files in build:"
-            Get-ChildItem -Recurse -Filter "*.exe" "build" -ErrorAction SilentlyContinue | Format-Table FullName, Length
-          }
+          exit 0
         }
+
+        Write-Host "❌ Not found at: $expectedPath"
+
+        # Search recursively
+        Write-Host "Searching recursively..."
+        $foundFiles = Get-ChildItem -Recurse -Filter "TaskFlow.exe" -ErrorAction SilentlyContinue
+        if ($foundFiles) {
+          Write-Host "✅ Found TaskFlow.exe:"
+          foreach ($f in $foundFiles) {
+            Write-Host "  - $($f.FullName) ($([math]::Round($f.Length/1KB, 1)) KB)"
+          }
+          # Copy to expected location
+          $source = $foundFiles[0].FullName
+          $destDir = "build/windows/runner/Release"
+          New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+          Copy-Item $source "$destDir/TaskFlow.exe"
+          Write-Host "✅ Copied to: $destDir/TaskFlow.exe"
+          exit 0
+        }
+
+        Write-Host "❌ TaskFlow.exe not found anywhere"
+        Write-Host "All .exe files in build:"
+        Get-ChildItem -Recurse -Filter "*.exe" "build" -ErrorAction SilentlyContinue | Format-Table FullName, Length
+
+        Write-Host "❌ Build failed: TaskFlow.exe not found"
+        exit 1
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -83,4 +87,4 @@ jobs:
           build/windows/runner/Release/TaskFlow.exe
           build/windows/runner/Release/*.dll
         retention-days: 7
-        if-no-files-found: warn
+        if-no-files-found: error
