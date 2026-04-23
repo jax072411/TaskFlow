@@ -60,3 +60,4 @@ Key dependencies:
 - `fl_chart: ^0.63.0` - Charts and statistics
 
 **Note**: The `intl` package is pinned to version 0.19.0 due to Flutter SDK compatibility requirements.
+# Test build
