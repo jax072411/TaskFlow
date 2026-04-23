@@ -7,25 +7,25 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Set up Flutter
+      - name: Enable Windows support
         script: |
           flutter config --enable-windows
       - name: Install dependencies
         script: flutter pub get
-      - name: Fix intl dependency
+      - name: Fix intl dependency (PowerShell)
         script: |
-          # Fix intl version conflict
-          sed -i.bak 's/intl: \^0\.20\.2/intl: 0.19.0/g' pubspec.yaml
-          cat pubspec.yaml | grep intl
+          # Fix intl version conflict using PowerShell
+          (Get-Content pubspec.yaml) -replace 'intl: \^0\.20\.2', 'intl: 0.19.0' | Set-Content pubspec.yaml
+          Write-Host "✅ Fixed intl dependency"
+          Get-Content pubspec.yaml | Select-String "intl"
       - name: Build Windows Release
         script: flutter build windows --release
     artifacts:
       - build/windows/runner/Release/**/*
     publishing:
-      # No automatic publishing, just build the artifacts
       email:
         notify:
           success: true
           failure: true
         recipients:
-          - your-email@example.com  # Replace with your email
+          - your-email@example.com
