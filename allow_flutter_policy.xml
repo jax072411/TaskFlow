@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SiPolicy xmlns="urn:schemas-microsoft-com:sipolicy" PolicyType="Base Policy">
+  <VersionEx>10.0.0.0</VersionEx>
+  <PolicyTypeID>{A244370E-44C9-4C06-B551-F6016E563076}</PolicyTypeID>
+  <PlatformID>{EF2284F3-8EE5-4963-8232-5AED4B550F19}</PlatformID>
+  <Rules>
+    <Rule>
+      <Option>Enabled:Unsigned System Integrity Policy</Option>
+    </Rule>
+    <Rule>
+      <Option>Enabled:Audit Mode</Option>
+    </Rule>
+    <Rule>
+      <Option>Enabled:Advanced Boot Options Menu</Option>
+    </Rule>
+    <Rule>
+      <Option>Enabled:UMCI</Option>
+    </Rule>
+  </Rules>
+  <FileRules>
+    <Allow ID="Allow_ImpellerC" FriendlyName="Flutter Impeller Compiler" FileName="impellerc.exe" />
+    <Allow ID="Allow_FontSubset" FriendlyName="Flutter Font Subset Tool" FileName="font-subset.exe" />
+    <Allow ID="Allow_Flutter" FriendlyName="Flutter Tool" FileName="flutter.exe" />
+    <Allow ID="Allow_FlutterBat" FriendlyName="Flutter Batch" FileName="flutter.bat" />
+  </FileRules>
+  <SignerRules>
+    <FileRulesRef>
+      <FileRuleRef RuleID="Allow_ImpellerC" />
+      <FileRuleRef RuleID="Allow_FontSubset" />
+      <FileRuleRef RuleID="Allow_Flutter" />
+      <FileRuleRef RuleID="Allow_FlutterBat" />
+    </FileRulesRef>
+  </SignerRules>
+</SiPolicy>
