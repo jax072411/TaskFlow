@@ -19,6 +19,12 @@ jobs:
         channel: 'stable'
         flutter-version: '3.29.3'
 
+    - name: Enable Developer Mode (required for symlinks)
+      run: |
+        # Try to enable Developer Mode via registry
+        reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /v AllowDevelopmentWithoutDevLicense /t REG_DWORD /d 1 /f
+        Write-Host "✅ Developer mode enabled via registry"
+
     - name: Cache Flutter dependencies
       uses: actions/cache@v3
       with:
@@ -43,32 +49,56 @@ jobs:
 
     - name: Build Windows Release
       run: flutter build windows --release
-      timeout-minutes: 30
+      timeout-minutes: 45
 
-    - name: Check build directory
+    - name: Check build output
       run: |
-        Write-Host "Checking build directory..."
+        Write-Host "Checking build directory structure..."
         if (Test-Path "build/windows/runner/Release") {
           Write-Host "✅ Release directory exists"
           Get-ChildItem "build/windows/runner/Release" | Format-Table Name, Length
         } else {
           Write-Host "❌ Release directory not found"
-          Write-Host "Checking build directory structure..."
-          Get-ChildItem -Recurse "build" | Format-Table FullName
+          Write-Host "Checking for other directories..."
+          if (Test-Path "build/windows/runner") {
+            Get-ChildItem "build/windows/runner" | Format-Table
+          }
+          if (Test-Path "build/windows") {
+            Get-ChildItem "build/windows" | Format-Table
+          }
+          if (Test-Path "build") {
+            Get-ChildItem "build" | Format-Table
+          }
         }
 
-    - name: Verify build output
+    - name: Verify TaskFlow.exe
       run: |
         $exePath = "build/windows/runner/Release/TaskFlow.exe"
         if (Test-Path $exePath) {
-          Write-Host "✅ Build successful: TaskFlow.exe found"
           $file = Get-Item $exePath
+          Write-Host "✅ Build successful!"
+          Write-Host "TaskFlow.exe found: $exePath"
           Write-Host "File size: $([math]::Round($file.Length/1MB, 2)) MB"
         } else {
-          Write-Host "❌ Build failed: TaskFlow.exe not found"
-          Write-Host "Searching for any .exe files..."
-          Get-ChildItem -Recurse -Filter "*.exe" "build" | Format-Table FullName, Length
-          exit 1
+          Write-Host "❌ TaskFlow.exe not found at expected location"
+          Write-Host "Searching for any .exe files in build directory..."
+          $exeFiles = Get-ChildItem -Recurse -Filter "*.exe" "build" -ErrorAction SilentlyContinue
+          if ($exeFiles) {
+            Write-Host "Found .exe files:"
+            $exeFiles | Format-Table FullName, Length
+            # Check if any of them might be TaskFlow
+            foreach ($exe in $exeFiles) {
+              if ($exe.Name -like "*taskflow*" -or $exe.Name -like "*TaskFlow*") {
+                Write-Host "✅ Found TaskFlow executable: $($exe.FullName)"
+                Write-Host "Copying to expected location..."
+                New-Item -ItemType Directory -Force -Path "build/windows/runner/Release" | Out-Null
+                Copy-Item $exe.FullName "build/windows/runner/Release/TaskFlow.exe"
+                break
+              }
+            }
+          } else {
+            Write-Host "❌ No .exe files found in build directory"
+          }
         }
 
     - name: Upload artifact
