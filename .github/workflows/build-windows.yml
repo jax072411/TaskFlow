@@ -3,7 +3,7 @@ name: Build Windows Release
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -21,59 +21,57 @@ jobs:
 
     - name: Fix dependencies
       run: |
-        # Fix intl version conflict
         (Get-Content pubspec.yaml) -replace 'intl: \^0\.20\.2', 'intl: 0.19.0' | Set-Content pubspec.yaml
-        Write-Host "✅ Dependencies fixed successfully"
+        Write-Host "✅ Dependencies fixed"
 
     - name: Install dependencies
       run: flutter pub get
-      timeout-minutes: 10
 
     - name: Build Windows Release
       run: flutter build windows --release
       timeout-minutes: 45
 
-    - name: List build directory contents
+    - name: Debug - List build directory
       run: |
-        Write-Host "=== Build Directory Contents ==="
+        Write-Host "=== Build Directory Tree ==="
         if (Test-Path "build") {
-          Get-ChildItem -Recurse "build" -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "*.exe" -or $_.Name -like "*.dll" } | Select-Object -First 30 | Format-Table FullName, Length
+          Get-ChildItem -Recurse "build" -ErrorAction SilentlyContinue | Where-Object { $_.PSIsContainer -eq $false } | Select-Object -First 50 | Format-Table FullName, Length
         } else {
-          Write-Host "❌ Build directory not found"
+          Write-Host "Build directory does not exist"
         }
 
-    - name: Find TaskFlow.exe
+    - name: Find and copy TaskFlow.exe
       run: |
         Write-Host "=== Searching for TaskFlow.exe ==="
-        $exePath = "build/windows/runner/Release/TaskFlow.exe"
-        if (Test-Path $exePath) {
-          Write-Host "✅ Found at expected location: $exePath"
-          $file = Get-Item $exePath
+
+        # Check expected location
+        $expectedPath = "build/windows/runner/Release/TaskFlow.exe"
+        if (Test-Path $expectedPath) {
+          Write-Host "✅ Found TaskFlow.exe at: $expectedPath"
+          $file = Get-Item $expectedPath
           Write-Host "File size: $([math]::Round($file.Length/1MB, 2)) MB"
         } else {
-          Write-Host "❌ Not found at expected location"
+          Write-Host "❌ Not found at: $expectedPath"
+
+          # Search recursively
           Write-Host "Searching recursively..."
-          $found = Get-ChildItem -Recurse -Filter "TaskFlow.exe" -ErrorAction SilentlyContinue
-          if ($found) {
+          $foundFiles = Get-ChildItem -Recurse -Filter "TaskFlow.exe" -ErrorAction SilentlyContinue
+          if ($foundFiles) {
             Write-Host "✅ Found TaskFlow.exe:"
-            $found | Format-Table FullName, Length
+            foreach ($f in $foundFiles) {
+              Write-Host "  - $($f.FullName) ($([math]::Round($f.Length/1KB, 1)) KB)"
+            }
+            # Copy to expected location
+            $source = $foundFiles[0].FullName
+            $destDir = "build/windows/runner/Release"
+            New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+            Copy-Item $source "$destDir/TaskFlow.exe"
+            Write-Host "✅ Copied to: $destDir/TaskFlow.exe"
           } else {
             Write-Host "❌ TaskFlow.exe not found anywhere"
-            Write-Host "Searching for any .exe files..."
-            $allExes = Get-ChildItem -Recurse -Filter "*.exe" "build" -ErrorAction SilentlyContinue
-            if ($allExes) {
-              Write-Host "Found .exe files:"
-              $allExes | Format-Table FullName, Length
-            } else {
-              Write-Host "❌ No .exe files found in build directory"
-              Write-Host "Checking if build directory exists..."
-              if (Test-Path "build") {
-                Write-Host "Build directory exists but is empty or has no .exe files"
-                Get-ChildItem "build" -ErrorAction SilentlyContinue | Format-Table
-              } else {
-                Write-Host "❌ Build directory does not exist"
-              }
-            }
+            # List all .exe files
+            Write-Host "All .exe files in build:"
+            Get-ChildItem -Recurse -Filter "*.exe" "build" -ErrorAction SilentlyContinue | Format-Table FullName, Length
           }
         }
 
@@ -85,3 +83,4 @@ jobs:
           build/windows/runner/Release/TaskFlow.exe
           build/windows/runner/Release/*.dll
         retention-days: 7
+        if-no-files-found: warn
