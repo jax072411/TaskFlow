@@ -1,0 +1,31 @@
+# Codemagic configuration for TaskFlow Windows build
+workflows:
+  windows-build:
+    name: TaskFlow Windows Build
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Set up Flutter
+        script: |
+          flutter config --enable-windows
+      - name: Install dependencies
+        script: flutter pub get
+      - name: Fix intl dependency
+        script: |
+          # Fix intl version conflict
+          sed -i.bak 's/intl: \^0\.20\.2/intl: 0.19.0/g' pubspec.yaml
+          cat pubspec.yaml | grep intl
+      - name: Build Windows Release
+        script: flutter build windows --release
+    artifacts:
+      - build/windows/runner/Release/**/*
+    publishing:
+      # No automatic publishing, just build the artifacts
+      email:
+        notify:
+          success: true
+          failure: true
+        recipients:
+          - your-email@example.com  # Replace with your email
